@@ -89,9 +89,9 @@ test('全链路：消息进来，两条消息出去，头和 context_token 都�
     await router.idle();
 
     const sends = received.filter((r) => r.url.startsWith('/ilink/bot/sendmessage'));
-    assert.equal(sends.length, 2);
-    assert.equal(sends[0].body.msg.item_list[0].text_item.text, '收到，开始处理…');
-    assert.equal(sends[1].body.msg.item_list[0].text_item.text, '这是回答');
+    // 只剩回答本身，开工回执已去掉
+    assert.equal(sends.length, 1);
+    assert.equal(sends[0].body.msg.item_list[0].text_item.text, '这是回答');
 
     for (const s of sends) {
       assert.equal(s.body.msg.context_token, 'CT-1');

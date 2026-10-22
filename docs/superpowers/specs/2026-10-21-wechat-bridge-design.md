@@ -1,4 +1,4 @@
-# 微信 ↔ DSH 桥（wechat-bridge）设计规格
+﻿# 微信 ↔ DSH 桥（wechat-bridge）设计规格
 
 - 日期：2026-10-21
 - 状态：设计已确认，待实施
@@ -152,12 +152,12 @@ renderQr(url, { pngPath })   // 终端 ASCII + 落 PNG，返回 pngPath
 - 首条消息不带 `--session-id`，从 `session` 事件取 `sessionId` 落盘
 - 之后每条都带 `--session-id`
 - 计数口径：`turns` = 该会话已成功完成的任务数（每次 `turn_end` 且未抛错加一）；`totalTokens` = 所有 `status.step_end.usage.totalTokens` 之和，累计到 `session.json`
-- **自动换代**：`totalTokens > 150_000` 或 `turns > 40` 时触发
+- **自动换代**：`totalTokens > 400_000` 或 `turns > 40` 时触发
   1. 用旧会话跑一次「把目前为止的关键信息和结论压成 300 字以内」
   2. 取该次 `final` 作为 `summary`
   3. 新会话首条消息前缀 `（前情提要：<summary>）\n\n`
   4. 重置 `turns` / `totalTokens`，保留 `summary`
-  5. 回复用户：「上下文换新了，前面的事我记得。」
+  5. 不发任何提示，只记一条日志（多一条消息会打断对话）
 - 摘要在内存中保留一份，换代失败（模型报错）则不带摘要直接换，并告知用户
 
 ## 6. 消息处理流程
@@ -258,7 +258,7 @@ renderQr(url, { pngPath })   // 终端 ASCII + 落 PNG，返回 pngPath
 3. **关停走 `router.stop()`。** SIGINT/SIGTERM → 置停止标志 → `router.stop()`（清队列 + abort 在跑任务，子进程被 kill 树）→ abort 长轮询；随后最多等 5 秒让在跑任务收尾，超时记「强制退出」并以 0 退出。轮询退避的 sleep 也是可中止的。
 4. **登录失败可重试，不再直接退出。** `network` / `server` 按 2s、2s、30s 退避重试；`aborted`（例如扫码期间 Ctrl-C）记提示后干净退出 0；`auth` 等不可重试错误才走致命路径。没有尝试次数上限。
 5. **DSH 子进程的启动方式**（见 §4.3）：Windows 经 `cmd.exe /d /c dsh` 间接启动，并注入 `DSH_PERMISSION_MODE=danger-full-access`。
-6. **换代阈值硬编码** 150k token / 40 轮，未做成配置项。
+6. **换代阈值硬编码** 400k token / 40 轮，未做成配置项。
 
 ## 12. 入站媒体（已实现）
 

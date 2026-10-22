@@ -328,7 +328,7 @@ test('泛化措辞（config session dir … does not exist）不误清 sessionId
   assert.ok(ilink.sent.at(-1).text.includes('退出码 1'));
 });
 
-test('换代那一轮：回执在摘要运行之前发出', async () => {
+test('换代那一轮：不先发开工回执，第一条消息是换代提示', async () => {
   const { ilink, runner, store, router } = build();
   store.write('session.json', { [OWNER]: { sessionId: 's1', turns: 41, totalTokens: 10 } });
 
@@ -357,10 +357,16 @@ test('换代那一轮：回执在摘要运行之前发出', async () => {
     await router.idle();
 
     assert.ok(events.includes('run:summary'), events.join(' | '));
+    const beforeSummary = events.slice(0, events.indexOf('run:summary'));
     assert.ok(
-      events.indexOf('send:收到，开始处理…') < events.indexOf('run:summary'),
-      `回执必须先于摘要：${events.join(' | ')}`,
+      !beforeSummary.some((e) => e.startsWith('send:')),
+      `摘要跑完之前不该发任何消息：${events.join(' | ')}`,
     );
+    // 换代不再发提示：摘要之后应当连一条消息都没有，直接跑任务并回答案
+    const informs = events.filter((e) => e.startsWith('send:') && e.includes('换新'));
+    assert.deepEqual(informs, [], `不该再有换代提示：${events.join(' | ')}`);
+    const afterSummary = events.slice(events.indexOf('run:summary') + 1);
+    assert.ok(afterSummary.includes('run:task'), `摘要后应直接跑任务：${events.join(' | ')}`);
   } finally {
     router.stop();
   }

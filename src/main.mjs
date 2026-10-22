@@ -132,8 +132,9 @@ async function main() {
   try {
     bridgeLock = acquireLock(STATE_DIR);
   } catch (e) {
-    if (e.code === 'already-running') {
-      logger.error(`已有实例在运行 pid=${e.pid}，本进程退出`);
+    // 退出码 3 = 「不该启动」（已有实例 / 无法判定的旧锁），start.cmd 见到会退避 60 秒
+    if (e.code === 'already-running' || e.code === 'ambiguous-lock') {
+      logger.error(`${e.message}；本进程退出`);
       process.exit(3);
     }
     throw e;

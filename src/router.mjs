@@ -1,4 +1,4 @@
-﻿import { chunkText } from './chunk.mjs';
+import { chunkText } from './chunk.mjs';
 import { mediaKind } from './media.mjs';
 import { parseSendMarkers } from './upload.mjs';
 
@@ -130,10 +130,7 @@ export function createRouter({
     const ac = new AbortController();
     current.abort = () => ac.abort();
 
-    // 立刻回执，别让人对着空会话干等。必须在换代摘要之前：换代那一轮跑摘要要几十秒，
-    // 回执发晚了用户全程只看到"正在输入"。中途 /stop 时也是先「收到」再「已停止」。
-    await safeSend(userId, contextToken, '收到，开始处理…');
-
+    // 不再发开工回执：用户嫌每条回答前都多一句。等模型出结果，中途靠「正在输入」兜着。
     let typingTimer = null;
     let progressTimer = null;
 
@@ -144,14 +141,12 @@ export function createRouter({
         userId,
         logger,
         signal: ac.signal,
-        limits: { maxTokens: 150000, maxTurns: 40 },
+        limits: { maxTokens: 400000, maxTurns: 40 },
       });
       if (ac.signal.aborted) return; // 用户已 /stop，别再往下走
+      // 换代只记日志，不再给用户发提示：多一条消息反而打断对话
       if (roll.rolled) {
-        const note = roll.summary
-          ? '上下文换新了，前面的事我记得（摘要已带过去）。'
-          : '上下文换新了，但摘要没生成成功，前面的事可能要你提一句。';
-        await safeSend(userId, contextToken, note);
+        logger?.info?.(`会话已换代，摘要${roll.summary ? '已生成' : '生成失败'}`);
       }
 
       const session = currentSession(userId);
@@ -398,7 +393,7 @@ export async function maybeRollover({
   userId,
   logger,
   signal,
-  limits = { maxTokens: 150000, maxTurns: 40 },
+  limits = { maxTokens: 400000, maxTurns: 40 },
 } = {}) {
   const all = store.read('session.json', {});
   const session = all[userId];
