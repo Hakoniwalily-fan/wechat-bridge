@@ -245,3 +245,17 @@ test('宽限期内正常 close 会清掉宽限计时器，不留悬浮定时器'
     globalThis.clearTimeout = realClearTimeout;
   }
 });
+
+test('子进程环境带上 DEEPSEEK_API_KEY（从环境变量）', async () => {
+  const saved = process.env.DEEPSEEK_API_KEY;
+  process.env.DEEPSEEK_API_KEY = 'sk-test-runner';
+  try {
+    const fake = createFakeSpawn({ lines: LINES });
+    const runner = createRunner({ workspace: '.', spawnImpl: fake.spawnImpl, killTree: async () => {} });
+    await runner.run({ taskText: 'x' });
+    assert.equal(fake.calls[0].opts.env.DEEPSEEK_API_KEY, 'sk-test-runner');
+  } finally {
+    if (saved === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = saved;
+  }
+});

@@ -1,5 +1,6 @@
 // src/dsh.mjs
 import { spawn } from 'node:child_process';
+import { buildChildEnv } from './credentials.mjs';
 
 export function createAccumulator() {
   const state = {
@@ -96,11 +97,15 @@ export function createRunner({
     let stderrTail = '';
     let timedOut = false;
 
+    // DSH 44.7 起 headless 不再从凭证库自取 key，必须由调用方透传（见 credentials.mjs）
+    const { env: childEnv, hasKey } = buildChildEnv();
+    if (!hasKey) logger?.warn?.('没有找到 DEEPSEEK_API_KEY（环境变量与 DSH 凭证库都没有），任务大概率会 MISSING_CREDENTIAL');
+
     const child = spawnImpl(launcher.bin, args, {
       cwd: workspace,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
-      env: { ...process.env, DSH_PERMISSION_MODE: 'danger-full-access' },
+      env: childEnv,
     });
 
     // 必须立刻挂 error 监听：启动失败时 Node 会把 'error' 当未捕获事件，直接杀死宿主进程
