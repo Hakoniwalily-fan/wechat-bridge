@@ -112,11 +112,18 @@ Unregister-ScheduledTask -TaskName WeChatBridge -Confirm:$false
 - 收到 `-14` 或 `auth` → 自动清凭证并要求重新扫码
 - 日志出现 `已有实例在运行 pid=…` → 有残留实例，按上面「彻底停」清一遍
 - 没回复但进程在 → 看 `bridge-*.log` 有没有 `轮询失败`；没有就是把消息当成了陌生来源（`忽略陌生来源消息 from=… expected=…`）
+- 报 `MISSING_CREDENTIAL: no API key for provider route "deepseek-official"` → DSH 升级后 headless 不再自取凭证。桥会从 `%USERPROFILE%\.dsh\.credentials.yaml` 的 `refs.DEEPSEEK_API_KEY` 读出来透传给子进程，两处都没有时在日志里告警；也可以自己 `set DEEPSEEK_API_KEY=...` 覆盖。
+- 升级 DSH 后先自测这一句：`dsh --profile headless --json "只回复两个字：收到"`。它能跑通，再谈桥的问题。
 
 ## 已知限制
 
 - 视频不支持（入站出站都不行）
 - 群聊不支持
-- 会话换代阈值硬编码 150k token / 40 轮
+- 会话换代阈值硬编码 400k token / 40 轮
 - 单用户（只有绑定者本人能用）
 - 主动推送受微信 24 小时窗口限制
+
+## License
+
+[MIT](LICENSE)
+
